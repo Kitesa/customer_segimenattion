@@ -1,59 +1,49 @@
+# app.py
 import streamlit as st
 import pandas as pd
+import numpy as np
 import joblib
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.metrics import silhouette_score
 
-# Load preprocessors and models
+# Load saved model and preprocessors
+kmeans = joblib.load("kmeans_model.pkl")
 scaler = joblib.load("scaler.pkl")
 imputer = joblib.load("imputer.pkl")
-pca = joblib.load("pca.pkl")
-kmeans = joblib.load("kmeans_model.pkl")
 
-# Optional: reload Agglomerative
-agg_model = joblib.load("agg_model.pkl")
+st.set_page_config(page_title="Customer Segmentation", layout="centered")
+st.title("🧠 Customer Segmentation Predictor")
 
-st.title("Clustering with KMeans and Agglomerative Models")
+st.markdown("Enter customer details below to predict which segment they belong to.")
 
-uploaded_file = st.file_uploader("Upload CSV file", type=["csv"])
+# User input
+age = st.number_input("Age", min_value=18, max_value=100, value=35)
+gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+income = st.number_input("Annual Income", min_value=1000.0, max_value=200000.0, value=60000.0)
+score = st.slider("Spending Score", min_value=1, max_value=100, value=50)
+membership = st.selectbox("Membership Level", ["Basic", "Silver", "Gold", "Platinum"])
+country = st.selectbox("Country", ["USA", "Canada", "UK", "Germany", "France", "Australia"])
 
-if uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
+# Convert to DataFrame
+input_df = pd.DataFrame([{
+    "Age": age,
+    "Gender": gender,
+    "AnnualIncome": income,
+    "SpendingScore": score,
+    "MembershipLevel": membership,
+    "Country": country
+}])
 
-    st.subheader("Raw Data")
-    st.write(df.head())
+# Encode categories like training
+def encode_categories(df):
+    df = df.copy()
+    df['Gender'] = df['Gender'].astype('category').cat.codes.replace(-1, np.nan)
+    df['MembershipLevel'] = df['MembershipLevel'].astype('category').cat.codes.replace(-1, np.nan)
+    df['Country'] = df['Country'].astype('category').cat.codes.replace(-1, np.nan)
+    return df
 
-    # Preprocess: impute, scale
-    X = imputer.transform(df)
-    X_scaled = scaler.transform(X)
+if st.button("Predict Cluster"):
+    encoded = encode_categories(input_df)
+    imputed = pd.DataFrame(imputer.transform(encoded), columns=encoded.columns)
+    scaled = pd.DataFrame(scaler.transform(imputed), columns=encoded.columns)
 
-    # --- KMeans predictions ---
-    st.subheader("KMeans Results")
-    kmeans_labels = kmeans.predict(X_scaled)
-    df["Cluster_KMeans"] = kmeans_labels
-    st.write(df[["Cluster_KMeans"]].head())
-
-    # --- Agglomerative Clustering ---
-    st.subheader("Agglomerative Results (re-fit)")
-    # ⚠ Agglomerative does not support .predict(), so we re-fit here
-    agg = AgglomerativeClustering(n_clusters=len(set(kmeans_labels)))
-    agg_labels = agg.fit_predict(X_scaled)
-    df["Cluster_Agglomerative"] = agg_labels
-    st.write(df[["Cluster_Agglomerative"]].head())
-
-    # --- Compare Silhouette Scores ---
-    st.subheader("Silhouette Scores")
-    kmeans_score = silhouette_score(X_scaled, kmeans_labels)
-    agg_score = silhouette_score(X_scaled, agg_labels)
-
-    st.write(f"KMeans Silhouette Score: **{kmeans_score:.4f}**")
-    st.write(f"Agglomerative Silhouette Score: **{agg_score:.4f}**")
-
-    # --- Download clustered dataset ---
-    st.subheader("Download Results")
-    st.download_button(
-        label="Download Clustered CSV",
-        data=df.to_csv(index=False).encode("utf-8"),
-        file_name="clustered_data.csv",
-        mime="text/csv",
-    )
+    cluster = kmeans.predict(scaled)[0]
+    st.success(f"✅ This customer belongs to **Cluster {cluster}**")
