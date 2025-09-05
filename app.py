@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 
 # --------------------- #
@@ -98,7 +97,6 @@ with tab2:
         if extra_cols:
             st.warning(f"⚠ Extra columns will be ignored: {extra_cols}")
 
-        # Keep only required columns
         df = df[required_cols]
 
         # Encode, impute, and scale
@@ -110,30 +108,15 @@ with tab2:
             st.error(f"Error during preprocessing: {e}")
             st.stop()
 
-        # --- Model selection ---
-        model_choice = st.selectbox("Select Clustering Model", ["KMeans", "Agglomerative"])
-        n_clusters = 3
-        if model_choice == "Agglomerative":
-            n_clusters = st.number_input("Number of Clusters for Agglomerative", min_value=2, max_value=20, value=3)
-
         if st.button("Predict Clusters (CSV)"):
             try:
-                if model_choice == "KMeans":
-                    df["Cluster_KMeans"] = kmeans.predict(scaled)
-                    score = silhouette_score(scaled, df["Cluster_KMeans"])
-                    st.write(df.head())
-                    st.success(f"KMeans Silhouette Score: {score:.4f}")
-
-                elif model_choice == "Agglomerative":
-                    agg = AgglomerativeClustering(n_clusters=n_clusters)
-                    df["Cluster_Agglomerative"] = agg.fit_predict(scaled)
-                    score = silhouette_score(scaled, df["Cluster_Agglomerative"])
-                    st.write(df.head())
-                    st.success(f"Agglomerative Silhouette Score: {score:.4f}")
+                df["Cluster_KMeans"] = kmeans.predict(scaled)
+                score = silhouette_score(scaled, df["Cluster_KMeans"])
+                st.write(df.head())
+                st.success(f"KMeans Silhouette Score: {score:.4f}")
 
                 # Download CSV
                 csv = df.to_csv(index=False).encode("utf-8")
                 st.download_button("Download Clustered CSV", data=csv, file_name="clustered_data.csv")
-
             except Exception as e:
                 st.error(f"Error during clustering: {e}")
