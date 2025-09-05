@@ -8,7 +8,7 @@ from sklearn.metrics import silhouette_score
 # --- Load models and preprocessors ---
 kmeans = joblib.load("kmeans_model.pkl")
 agg_model = joblib.load("agg_model.pkl")          # saved Agglomerative model (optional)
-final_model = joblib.load("final_model.pkl")      # your final trained model
+final_model = joblib.load("pca.pkl")      # your final trained model
 scaler = joblib.load("scaler.pkl")
 imputer = joblib.load("imputer.pkl")
 
@@ -66,3 +66,4 @@ if st.button("Predict Cluster"):
     elif model_choice == "Final Model":
         cluster = final_model.predict(scaled)[0]
         st.success(f"✅ This customer belongs to **Cluster {cluster}** (Final Model)")
+
