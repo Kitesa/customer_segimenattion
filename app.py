@@ -48,7 +48,7 @@ scaled = pd.DataFrame(scaler.transform(imputed), columns=encoded.columns)
 # --- Model selection ---
 model_choice = st.selectbox(
     "Select Clustering Model",
-    ["KMeans", "Agglomerative", "Final Model"]
+    ["KMeans", "Agglomerative"]
 )
 
 if st.button("Predict Cluster"):
@@ -61,6 +61,7 @@ if st.button("Predict Cluster"):
         agg = AgglomerativeClustering(n_clusters=3)  # set your number of clusters
         cluster_label = agg.fit_predict(scaled)[0]
         st.success(f"✅ This customer belongs to **Cluster {cluster_label}** (Agglomerative)")
+
 
 
 
