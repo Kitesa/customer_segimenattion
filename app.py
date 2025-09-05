@@ -57,6 +57,20 @@ with tab1:
 # --- CSV Upload --- #
 # --------------------- #
 with tab2:
+    st.subheader("Dataset Requirements")
+    st.markdown("""
+    Your CSV must contain the following columns exactly (case-sensitive):
+    
+    | Column Name         | Type      | Notes                                  |
+    |--------------------|-----------|---------------------------------------|
+    | Age                 | int       | Customer age, 18+                      |
+    | Gender              | categorical | 'Male', 'Female', or 'Other'         |
+    | AnnualIncome        | float     | Annual income in dollars               |
+    | SpendingScore       | int       | Score between 1 and 100                |
+    | MembershipLevel     | categorical | 'Basic', 'Silver', 'Gold', 'Platinum'|
+    | Country             | categorical | e.g., 'USA', 'Canada', etc.          |
+    """)
+
     uploaded_file = st.file_uploader("Upload CSV file for batch clustering", type=["csv"])
     
     if uploaded_file:
@@ -64,19 +78,45 @@ with tab2:
         st.write("Preview of uploaded data:")
         st.dataframe(df.head())
 
+        # --- Check columns ---
+        required_cols = ['Age', 'Gender', 'AnnualIncome', 'SpendingScore', 'MembershipLevel', 'Country']
+        missing_cols = [c for c in required_cols if c not in df.columns]
+        extra_cols = [c for c in df.columns if c not in required_cols]
+
+        if missing_cols:
+            st.error(f"❌ Missing columns: {missing_cols}")
+            st.stop()
+        if extra_cols:
+            st.warning(f"⚠ Extra columns in CSV will be ignored: {extra_cols}")
+
+        df = df[required_cols]  # select/reorder required columns
+
+        # Encode categories
+        def encode_categories(df):
+            df = df.copy()
+            df['Gender'] = df['Gender'].astype('category').cat.codes.replace(-1, np.nan)
+            df['MembershipLevel'] = df['MembershipLevel'].astype('category').cat.codes.replace(-1, np.nan)
+            df['Country'] = df['Country'].astype('category').cat.codes.replace(-1, np.nan)
+            return df
+
         encoded = encode_categories(df)
-        imputed = pd.DataFrame(imputer.transform(encoded), columns=encoded.columns)
-        scaled = pd.DataFrame(scaler.transform(imputed), columns=encoded.columns)
 
+        # Impute and scale
+        try:
+            imputed = pd.DataFrame(imputer.transform(encoded), columns=encoded.columns)
+            scaled = pd.DataFrame(scaler.transform(imputed), columns=encoded.columns)
+        except ValueError as e:
+            st.error(f"Error during preprocessing: {e}")
+            st.stop()
+
+        # Model selection
         model_choice = st.selectbox("Select Clustering Model", ["KMeans", "Agglomerative"])
-
         if st.button("Predict Clusters (CSV)"):
             if model_choice == "KMeans":
                 df["Cluster_KMeans"] = kmeans.predict(scaled)
                 score = silhouette_score(scaled, df["Cluster_KMeans"])
                 st.write(df.head())
                 st.success(f"KMeans Silhouette Score: {score:.4f}")
-
             elif model_choice == "Agglomerative":
                 n_clusters = st.number_input("Number of Clusters for Agglomerative", min_value=2, max_value=20, value=3)
                 agg = AgglomerativeClustering(n_clusters=n_clusters)
@@ -85,6 +125,6 @@ with tab2:
                 st.write(df.head())
                 st.success(f"Agglomerative Silhouette Score: {score:.4f}")
 
-            # Allow download of clustered CSV
+            # Download clustered CSV
             csv = df.to_csv(index=False).encode("utf-8")
             st.download_button("Download Clustered CSV", data=csv, file_name="clustered_data.csv")
