@@ -4,9 +4,9 @@ import numpy as np
 import joblib
 
 # --- Load models and preprocessors ---
-kmeans = joblib.load("models/kmeans_model.pkl")
-scaler = joblib.load("models/scaler.pkl")
-imputer = joblib.load("models/imputer.pkl")
+kmeans = joblib.load("kmeans_model.pkl")
+scaler = joblib.load("scaler.pkl")
+imputer = joblib.load("imputer.pkl")
 
 st.set_page_config(page_title="Customer Segmentation", layout="centered")
 st.title("🧠 Customer Segmentation Predictor")
@@ -57,3 +57,4 @@ if st.button("Predict Cluster"):
 
     elif model_choice.startswith("Agglomerative"):
         st.warning("⚠ Agglomerative clustering cannot predict a single customer. Please use KMeans.")
+
