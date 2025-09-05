@@ -5,7 +5,6 @@ import joblib
 
 # --- Load models and preprocessors ---
 kmeans = joblib.load("models/kmeans_model.pkl")
-final_model = joblib.load("models/final_model.pkl")  # optional
 scaler = joblib.load("models/scaler.pkl")
 imputer = joblib.load("models/imputer.pkl")
 
@@ -21,7 +20,6 @@ score = st.slider("Spending Score", min_value=1, max_value=100, value=50)
 membership = st.selectbox("Membership Level", ["Basic", "Silver", "Gold", "Platinum"])
 country = st.selectbox("Country", ["USA", "Canada", "UK", "Germany", "France", "Australia"])
 
-# --- Convert to DataFrame ---
 input_df = pd.DataFrame([{
     "Age": age,
     "Gender": gender,
@@ -46,11 +44,10 @@ imputed = pd.DataFrame(imputer.transform(encoded), columns=encoded.columns)
 scaled = pd.DataFrame(scaler.transform(imputed), columns=encoded.columns)
 
 # --- Model selection ---
-available_models = ["KMeans"]
-if final_model is not None:
-    available_models.append("Final Model")
-
-model_choice = st.selectbox("Select Clustering Model", available_models)
+model_choice = st.selectbox(
+    "Select Clustering Model",
+    ["KMeans", "Agglomerative (not available for single input)"]
+)
 
 # --- Predict ---
 if st.button("Predict Cluster"):
@@ -58,6 +55,5 @@ if st.button("Predict Cluster"):
         cluster = kmeans.predict(scaled)[0]
         st.success(f"✅ This customer belongs to **Cluster {cluster}** (KMeans)")
 
-    elif model_choice == "Final Model":
-        cluster = final_model.predict(scaled)[0]
-        st.success(f"✅ This customer belongs to **Cluster {cluster}** (Final Model)")
+    elif model_choice.startswith("Agglomerative"):
+        st.warning("⚠ Agglomerative clustering cannot predict a single customer. Please use KMeans.")
